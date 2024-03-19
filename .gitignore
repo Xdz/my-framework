@@ -1,3 +1,9 @@
+# added by xdz
+.vscode
+build/
+vcpkg_installed/
+imgui.ini
+
 # Prerequisites
 *.d
 
