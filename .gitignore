@@ -2,7 +2,6 @@
 .vscode
 build/
 vcpkg_installed/
-imgui.ini
 
 # Prerequisites
 *.d

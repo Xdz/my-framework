@@ -1,0 +1,15 @@
+cmake_minimum_required(VERSION 3.25)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake")
+project(my-framework)
+include_directories(include)
+
+find_package(imgui CONFIG REQUIRED)
+find_package(glfw3 CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
+file(GLOB_RECURSE SOURCES "src/*.cpp")
+add_executable(my-framework ${SOURCES})
+
+target_link_libraries(my-framework PRIVATE glm::glm)
+target_link_libraries(my-framework PRIVATE imgui::imgui)
+target_link_libraries(my-framework PRIVATE glfw)
