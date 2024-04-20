@@ -8,6 +8,8 @@ class MyWindow
 {
 public:
     GLFWwindow* window;
+    MyWindow();
+    ~MyWindow();
     void initGLFW();
     void run();
     void cleanup();

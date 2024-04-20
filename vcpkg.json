@@ -9,6 +9,7 @@
             
         },
         "glm",
-        "glfw3"
+        "glfw3",
+        "fmt"
     ]
 }
