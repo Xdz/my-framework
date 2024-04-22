@@ -2,11 +2,30 @@
 #define SET_VULKAN_H
 
 #include <vulkan/vulkan.h>
+#include <vector>
 
 class SetVulkan
 {
 private:
-    void printErrorCode(VkResult result);
+    uint32_t apiVersion;
+
+    uint32_t layerCount;
+    std::vector<VkLayerProperties> availableLayers;
+
+    uint32_t extensionCount;
+    std::vector<VkExtensionProperties> availableExtensions;
+
+    uint32_t physicalDeviceCount;
+    std::vector<VkPhysicalDevice> physicalDevices;
+
+    VkResult getVulkanVersion();
+    VkResult getAviableLayers();
+    VkResult getAviableExtensions();
+
+    VkResult createInstance();
+    VkResult selectPhysicalDevice();
+    VkResult createLogicalDevice();
+
 public:
     SetVulkan();
     ~SetVulkan();
@@ -19,7 +38,7 @@ public:
     VkDevice device;
     VkQueue graphicsQueue;
     VkQueue presentQueue;
-    
+
 };
 
 #endif // SET_VULKAN_H

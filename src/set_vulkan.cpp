@@ -1,17 +1,14 @@
 #include "set_vulkan.h"
+#include <vector>
 #include <fmt/core.h>
 #include <fmt/format.h>
 
-void SetVulkan::printErrorCode(VkResult result)
-{
-    if (result != VK_SUCCESS)
-    {
-        fmt::print("Error code: {}\n", static_cast<uint32_t>(result));
-    }
-}
 
 SetVulkan::SetVulkan()
 {
+    layerCount = 0;
+    extensionCount = 0;
+    apiVersion = 0;
     instance = VK_NULL_HANDLE;
     physicalDevice = VK_NULL_HANDLE;
     device = VK_NULL_HANDLE;
@@ -25,11 +22,62 @@ SetVulkan::~SetVulkan()
     vkDestroyInstance(instance, nullptr);
 }
 
-static void createInstance(VkInstance& instance)
+VkResult SetVulkan::getVulkanVersion()
 {
-    uint32_t apiVersion = 0;
-    vkEnumerateInstanceVersion(&apiVersion);
-    fmt::print("Vulkan API version:{}.{}.{}\n", VK_VERSION_MAJOR(apiVersion), VK_VERSION_MINOR(apiVersion), VK_VERSION_PATCH(apiVersion));
+    VkResult result;
+    result = vkEnumerateInstanceVersion(&apiVersion);
+    return result;
+}
+
+VkResult SetVulkan::getAviableLayers()
+{
+    VkResult result;
+    result = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+    availableLayers.resize(layerCount);
+    result = vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+    return result;
+}
+
+VkResult SetVulkan::getAviableExtensions()
+{
+    VkResult result;
+    result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+    availableExtensions.resize(extensionCount);
+    result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
+    return result;
+}
+
+VkBool32 debugReportCallback(
+        VkDebugReportFlagsEXT        flags,
+        VkDebugReportObjectTypeEXT   objectType,
+        uint64_t                     object,
+        size_t                       location,
+        int32_t                      messageCode,
+        const char*                  pLayerPrefix,
+        const char*                  pMessage,
+    void* pUserData)
+{
+    if (objectType == VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT)
+    {
+        fmt::print("Instance error: {}\n", pMessage);
+    }
+
+    return VK_FALSE;
+}
+
+VkResult SetVulkan::createInstance()
+{
+    VkResult result;
+
+    //print Vulkan API version
+    getVulkanVersion();
+    fmt::print("Vulkan API version: {}.{}.{}\n", VK_API_VERSION_MAJOR(apiVersion), VK_API_VERSION_MINOR(apiVersion), VK_API_VERSION_PATCH(apiVersion));
+
+    //check available layers
+    getAviableLayers();
+
+    //check available extensions
+    getAviableExtensions();
 
     VkApplicationInfo appInfo = {};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -40,22 +88,63 @@ static void createInstance(VkInstance& instance)
     appInfo.engineVersion = 0;
     appInfo.apiVersion = apiVersion;
 
+    PFN_vkDebugReportCallbackEXT pCallback = debugReportCallback;
+    
+    VkDebugReportCallbackCreateInfoEXT debugCreateInfo = {};
+    debugCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
+    debugCreateInfo.pNext = nullptr;
+    debugCreateInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
+    debugCreateInfo.pfnCallback = &debugReportCallback;
+    debugCreateInfo.pUserData = nullptr;
+
+    std::vector<const char*> layerNames;
+    std::vector<const char*> extensionNames;
+    for(auto i: availableLayers)
+    {
+        //fmt::print("Available layer: {}\n", i.layerName);
+        layerNames.push_back(i.layerName);
+    }
+    for (auto i: availableExtensions)
+    {
+        //fmt::print("Available extension: {}\n", i.extensionName);
+        extensionNames.push_back(i.extensionName);
+    } 
 
     VkInstanceCreateInfo instanceCreateInfo = {};
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    instanceCreateInfo.pNext = nullptr;
+    instanceCreateInfo.pNext = &debugCreateInfo;
     instanceCreateInfo.flags = 0;
     instanceCreateInfo.pApplicationInfo = &appInfo;
-    instanceCreateInfo.enabledLayerCount = 0;
-    instanceCreateInfo.ppEnabledLayerNames = nullptr;
-    instanceCreateInfo.enabledExtensionCount = 0;
-    instanceCreateInfo.ppEnabledExtensionNames = nullptr;
+    instanceCreateInfo.enabledLayerCount = layerCount;
+    instanceCreateInfo.ppEnabledLayerNames = layerNames.data();
+    instanceCreateInfo.enabledExtensionCount = extensionCount;
+    instanceCreateInfo.ppEnabledExtensionNames = extensionNames.data();
 
-    vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
+    fmt::print("Creating instance...\n");
+    result = vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
+    fmt::print("Create instance result: {}\n", (uint32_t)result);
 
+    return result;
+}
+
+VkResult SetVulkan::selectPhysicalDevice()
+{
+    VkResult result;
+    result = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
+    physicalDevices.resize(physicalDeviceCount);
+    result = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data());
+    //#TODO: select the best physical device
+    return result;
 }
 
 void SetVulkan::initVulkan()
 {
-    createInstance(instance);
+    createInstance();
+    selectPhysicalDevice();
+    createLogicalDevice();
+}
+
+void SetVulkan::cleanup()
+{
+    vkDestroyInstance(instance, nullptr);
 }

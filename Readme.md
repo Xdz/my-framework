@@ -1,1 +1,1 @@
-Learing GLFW&Vulkan,this repository is for practice.
+Learning GLFW&Vulkan,this repository is for practice.
