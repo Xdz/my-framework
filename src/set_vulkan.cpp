@@ -7,8 +7,12 @@
 SetVulkan::SetVulkan()
 {
     layerCount = 0;
-    extensionCount = 0;
+    instanceExtensionCount = 0;
     apiVersion = 0;
+    physicalDeviceCount = 0;
+    queueFamilyPropertyCount = 0;
+    deviceExtensionCount = 0;
+
     instance = VK_NULL_HANDLE;
     physicalDevice = VK_NULL_HANDLE;
     device = VK_NULL_HANDLE;
@@ -19,6 +23,7 @@ SetVulkan::SetVulkan()
 
 SetVulkan::~SetVulkan()
 {
+    if(instance != VK_NULL_HANDLE)
     vkDestroyInstance(instance, nullptr);
 }
 
@@ -38,12 +43,21 @@ VkResult SetVulkan::getAviableLayers()
     return result;
 }
 
-VkResult SetVulkan::getAviableExtensions()
+VkResult SetVulkan::getAviableInstanceExtensions()
 {
     VkResult result;
-    result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-    availableExtensions.resize(extensionCount);
-    result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
+    result = vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, nullptr);
+    instanceExtensions.resize(instanceExtensionCount);
+    result = vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, instanceExtensions.data());
+    return result;
+}
+
+VkResult SetVulkan::getAviableDeviceExtensions()
+{
+    VkResult result;
+    result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &deviceExtensionCount, nullptr);
+    deviceExtensions.resize(deviceExtensionCount);
+    result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &deviceExtensionCount, deviceExtensions.data());
     return result;
 }
 
@@ -71,13 +85,16 @@ VkResult SetVulkan::createInstance()
 
     //print Vulkan API version
     getVulkanVersion();
-    fmt::print("Vulkan API version: {}.{}.{}\n", VK_API_VERSION_MAJOR(apiVersion), VK_API_VERSION_MINOR(apiVersion), VK_API_VERSION_PATCH(apiVersion));
+    fmt::print("Vulkan API version: {}.{}.{}\n",
+        VK_API_VERSION_MAJOR(apiVersion),
+        VK_API_VERSION_MINOR(apiVersion),
+        VK_API_VERSION_PATCH(apiVersion));
 
     //check available layers
     getAviableLayers();
 
     //check available extensions
-    getAviableExtensions();
+    getAviableInstanceExtensions();
 
     VkApplicationInfo appInfo = {};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -98,16 +115,16 @@ VkResult SetVulkan::createInstance()
     debugCreateInfo.pUserData = nullptr;
 
     std::vector<const char*> layerNames;
-    std::vector<const char*> extensionNames;
+    std::vector<const char*> instanceExtensionNames;
     for(auto i: availableLayers)
     {
         //fmt::print("Available layer: {}\n", i.layerName);
         layerNames.push_back(i.layerName);
     }
-    for (auto i: availableExtensions)
+    for (auto i: instanceExtensions)
     {
         //fmt::print("Available extension: {}\n", i.extensionName);
-        extensionNames.push_back(i.extensionName);
+        instanceExtensionNames.push_back(i.extensionName);
     } 
 
     VkInstanceCreateInfo instanceCreateInfo = {};
@@ -117,8 +134,8 @@ VkResult SetVulkan::createInstance()
     instanceCreateInfo.pApplicationInfo = &appInfo;
     instanceCreateInfo.enabledLayerCount = layerCount;
     instanceCreateInfo.ppEnabledLayerNames = layerNames.data();
-    instanceCreateInfo.enabledExtensionCount = extensionCount;
-    instanceCreateInfo.ppEnabledExtensionNames = extensionNames.data();
+    instanceCreateInfo.enabledExtensionCount = instanceExtensionCount;
+    instanceCreateInfo.ppEnabledExtensionNames = instanceExtensionNames.data();
 
     fmt::print("Creating instance...\n");
     result = vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
@@ -133,7 +150,33 @@ VkResult SetVulkan::selectPhysicalDevice()
     result = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
     physicalDevices.resize(physicalDeviceCount);
     result = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data());
-    //#TODO: select the best physical device
+
+    for (auto i : physicalDevices)
+    {
+        VkPhysicalDeviceProperties deviceProperties;
+        vkGetPhysicalDeviceProperties(i, &deviceProperties);
+        fmt::print("Device name: {}\n", deviceProperties.deviceName);
+    }
+    physicalDevice = physicalDevices[1];
+
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertyCount, nullptr);
+    queueFamilyProperties.resize(queueFamilyPropertyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertyCount, queueFamilyProperties.data());
+
+    return result;
+}
+
+VkResult SetVulkan::createLogicalDevice()
+{
+    VkResult result;
+
+    //TODO: create queues
+    VkDeviceCreateInfo deviceCreateInfo = {};
+    deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    deviceCreateInfo.pNext = nullptr;
+    deviceCreateInfo.flags = 0;
+
+    //vkCreateDevice(physicalDevice, nullptr, nullptr, &device);
     return result;
 }
 
